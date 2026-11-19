@@ -63,6 +63,7 @@ jobs:
                   txt = txt.replace("sys.exit(1)", "pass")
               if "exports_files(" in txt and "provisioning" in txt:
                   txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", "exports_files([\"Telegram.mobileprovision\"], visibility = [\"//visibility:public\"])", txt, flags=re.DOTALL)
+                  txt = txt.replace("provisioning/BUILD", "provisioning/BUILD\"; import shutil, os; os.makedirs(os.path.dirname(provisioning_build_path) if \"provisioning_build_path\" in locals() else os.path.join(build_configuration_path, \"provisioning\"), exist_ok=True); shutil.copy(\"/Users/Shared/telegram-ios/build-system/user-codesigning/profiles/Telegram.mobileprovision\", os.path.join(build_configuration_path, \"provisioning/Telegram.mobileprovision\")); _dummy = \"")
               open(path, "w").write(txt)
           for path in glob.glob("/Users/Shared/telegram-ios/**/BUILD*", recursive=True):
               txt = open(path).read()
