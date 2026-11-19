@@ -1,0 +1,35 @@
+name: Build Unassigned IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Archive
+        run: |
+          # Замените GhostGram.xcodeproj (или .xcworkspace) и схему на актуальные из репозитория
+          xcodebuild -project GhostGram.xcodeproj \
+            -scheme GhostGram \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/Release-iphoneos/*.app Payload/
+          zip -r GhostGram.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: GhostGram-IPA
+          path: GhostGram.ipa
