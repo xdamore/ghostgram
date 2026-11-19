@@ -31,9 +31,12 @@ jobs:
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/certs"
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/profiles"
 
-          echo "$CERT_P12_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12"
+          echo "$CERT_P12_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/raw.p12
           echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision"
           CLEAN_PASS=$(printf "%s" "$CERT_PASSWORD" | tr -d '\r\n')
+
+          openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem -legacy || openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem
+          openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS" -legacy || openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS"
 
           security create-keychain -p "buildpass" build.keychain
           security default-keychain -s build.keychain
