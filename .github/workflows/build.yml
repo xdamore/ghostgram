@@ -71,10 +71,10 @@ jobs:
               if "exports_files(" in txt and "provisioning" in txt:
                   txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", genrule, txt, flags=re.DOTALL)
               open(path, "w").write(txt)
-          for path in glob.glob("/Users/Shared/telegram-ios/**/BUILD*", recursive=True):
+          for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**/BUILD*", recursive=True):
               txt = open(path).read()
               new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
-              new_txt = re.sub(r"\+\s*\"\.[A-Za-z0-9_.-]+\"", "", new_txt)
+              new_txt = re.sub(r"(\bbundle_id\s*=\s*[^,\n]+)\+\s*\"\.[A-Za-z0-9_.-]+\"", r"\1", new_txt)
               if new_txt != txt:
                   open(path, "w").write(new_txt)
           '
