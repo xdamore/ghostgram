@@ -20,15 +20,35 @@ jobs:
           cp -R $GITHUB_WORKSPACE /Users/Shared/
           mv /Users/Shared/$(basename $GITHUB_WORKSPACE) /Users/Shared/telegram-ios
 
-      - name: Patch fake provisioning profiles expiration date
+      - name: Setup User Codesigning
+        env:
+          CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
+          PROV_PROFILE_BASE64: ${{ secrets.PROV_PROFILE_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
-          python3 -c '
-          import glob
-          for path in glob.glob("/Users/Shared/telegram-ios/build-system/fake-codesigning/profiles/*.mobileprovision"):
-              data = open(path, "rb").read()
-              data = data.replace(b"<date>2026-", b"<date>2099-").replace(b"<date>2025-", b"<date>2099-")
-              open(path, "wb").write(data)
-          '
+          SOURCE_DIR=/Users/Shared/telegram-ios
+          rm -rf "$SOURCE_DIR/build-system/user-codesigning"
+          mkdir -p "$SOURCE_DIR/build-system/user-codesigning/certs"
+          mkdir -p "$SOURCE_DIR/build-system/user-codesigning/profiles"
+
+          echo "$CERT_P12_BASE64" | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12"
+          echo "$PROV_PROFILE_BASE64" | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision"
+
+          security create-keychain -p "buildpass" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "buildpass" build.keychain
+          security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
+
+          TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
+          python3 -c "
+          import json
+          p = '$SOURCE_DIR/build-system/appstore-configuration.json'
+          d = json.load(open(p))
+          d['team_id'] = '$TEAM_ID'
+          d['bundle_id'] = 'com.ghostgram.personal'
+          json.dump(d, open(p, 'w'), indent=2)
+          "
 
       - name: Build the App
         run: |
@@ -48,7 +68,7 @@ jobs:
             --bazelUserRoot="$BAZEL_USER_ROOT" \
             build \
             --configurationPath="build-system/appstore-configuration.json" \
-            --codesigningInformationPath=build-system/fake-codesigning \
+            --codesigningInformationPath=build-system/user-codesigning \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER"
 
