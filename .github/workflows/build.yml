@@ -31,13 +31,14 @@ jobs:
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/certs"
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/profiles"
 
-          echo "$CERT_P12_BASE64" | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12"
-          echo "$PROV_PROFILE_BASE64" | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision"
+          echo "$CERT_P12_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12"
+          echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision"
+          CLEAN_PASS=$(printf "%s" "$CERT_PASSWORD" | tr -d '\r\n')
 
           security create-keychain -p "buildpass" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "buildpass" build.keychain
-          security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
           TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
