@@ -61,7 +61,9 @@ jobs:
               if "Could not find a valid aps-environment" in txt:
                   txt = txt.replace("Could not find a valid aps-environment", "IGNORE_APS_CHECK")
                   txt = txt.replace("sys.exit(1)", "pass")
-                  open(path, "w").write(txt)
+              if "exports_files(" in txt and "provisioning" in txt:
+                  txt = txt.replace("exports_files(", "exports_files([\"Telegram.mobileprovision\"], visibility = [\"//visibility:public\"])\n# ")
+              open(path, "w").write(txt)
           for path in glob.glob("/Users/Shared/telegram-ios/**/BUILD*", recursive=True):
               txt = open(path).read()
               new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
