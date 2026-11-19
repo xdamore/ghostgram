@@ -64,19 +64,14 @@ jobs:
               if "exports_files(" in txt and "provisioning" in txt:
                   lines = txt.splitlines()
                   new_lines = []
-                  skip = False
                   for line in lines:
-                      if "exports_files(" in line and not skip:
-                          indent = line[:len(line) - len(line.lstrip())]
-                          new_lines.append(indent + "file.write(\"exports_files([\\\"Telegram.mobileprovision\\\"], visibility = [\\\"//visibility:public\\\"])\\n\")")
-                          if ")" not in line.split("exports_files(", 1)[1]:
-                              skip = True
-                          continue
-                      if skip:
-                          if ")" in line:
-                              skip = False
-                          continue
                       new_lines.append(line)
+                      if "exports_files(" in line:
+                          indent = line[:len(line) - len(line.lstrip())]
+                          for j in range(len(new_lines)-1, len(lines)):
+                              if "file.close()" in lines[j] or "with open" in line:
+                                  break
+                          new_lines.append(indent + "file.seek(0); file.truncate(); file.write(\"exports_files([\\\"Telegram.mobileprovision\\\"], visibility = [\\\"//visibility:public\\\"])\\n\")")
                   txt = "\n".join(new_lines) + "\n"
               open(path, "w").write(txt)
           for path in glob.glob("/Users/Shared/telegram-ios/**/BUILD*", recursive=True):
