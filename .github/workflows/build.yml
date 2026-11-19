@@ -13,18 +13,22 @@ jobs:
           submodules: 'recursive'
           fetch-depth: '1'
 
-      - name: Set date before profile expiration
-        run: |
-          sudo sntp -sS ://apple.com || true
-          sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.timed.plist || true
-          sudo date 100112002026
-
       - name: Create canonical source directory
         run: |
           set -x
           sudo mkdir -p /Users/Shared
           cp -R $GITHUB_WORKSPACE /Users/Shared/
           mv /Users/Shared/$(basename $GITHUB_WORKSPACE) /Users/Shared/telegram-ios
+
+      - name: Patch fake provisioning profiles expiration date
+        run: |
+          python3 -c '
+          import glob
+          for path in glob.glob("/Users/Shared/telegram-ios/build-system/fake-codesigning/profiles/*.mobileprovision"):
+              data = open(path, "rb").read()
+              data = data.replace(b"<date>2026-", b"<date>2099-").replace(b"<date>2025-", b"<date>2099-")
+              open(path, "wb").write(data)
+          '
 
       - name: Build the App
         run: |
