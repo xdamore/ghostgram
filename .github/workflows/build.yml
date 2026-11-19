@@ -82,6 +82,7 @@ jobs:
           set -x
           SOURCE_DIR=/Users/Shared/telegram-ios
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
+          sudo rm -rf "$BAZEL_USER_ROOT"
           cd $SOURCE_DIR
 
           BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
