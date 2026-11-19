@@ -45,12 +45,18 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
           TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
+          FULL_APP_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract Entitlements.application-identifier raw -)
+          REAL_BUNDLE_ID="${FULL_APP_ID#*.}"
+          if [[ "$REAL_BUNDLE_ID" == *"*"* ]]; then
+            REAL_BUNDLE_ID="${REAL_BUNDLE_ID//\*/ghostgram}"
+          fi
+
           python3 -c "
           import json
           p = '$SOURCE_DIR/build-system/appstore-configuration.json'
           d = json.load(open(p))
           d['team_id'] = '$TEAM_ID'
-          d['bundle_id'] = 'com.ghostgram.personal'
+          d['bundle_id'] = '$REAL_BUNDLE_ID'
           json.dump(d, open(p, 'w'), indent=2)
           "
 
