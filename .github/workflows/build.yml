@@ -13,6 +13,12 @@ jobs:
           submodules: 'recursive'
           fetch-depth: '1'
 
+      - name: Set date before profile expiration
+        run: |
+          sudo sntp -sS ://apple.com || true
+          sudo launchctl unload -w /System/Library/LaunchDaemons/com.apple.timed.plist || true
+          sudo date 100112002026
+
       - name: Create canonical source directory
         run: |
           set -x
@@ -32,14 +38,6 @@ jobs:
           export COMMIT_COUNT=$(git rev-list --count HEAD)
           export COMMIT_COUNT="$(($COMMIT_COUNT+$BUILD_NUMBER_OFFSET))"
           export BUILD_NUMBER="$COMMIT_COUNT"
-
-          python3 -u build-system/Make/Make.py \
-            --overrideXcodeVersion \
-            --bazelUserRoot="$BAZEL_USER_ROOT" \
-            generate-verification-profiles \
-            --configurationPath="build-system/appstore-configuration.json" \
-            --codesigningInformationPath=build-system/fake-codesigning \
-            --destination="build-system/fake-codesigning/profiles"
 
           python3 -u build-system/Make/Make.py \
             --overrideXcodeVersion \
