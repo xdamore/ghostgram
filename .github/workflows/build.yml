@@ -38,20 +38,18 @@ jobs:
           openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem -legacy || openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem
           openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS" -legacy || openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS"
 
-          python3 -c '
-          import re, shutil, glob
-          src = "/tmp/user.mobileprovision"
-          dst_dir = "/Users/Shared/telegram-ios/build-system/user-codesigning/profiles/"
-          for f in glob.glob("/Users/Shared/telegram-ios/build-system/fake-codesigning/profiles/*.mobileprovision"):
-              name = f.split("/")[-1]
-              shutil.copy(src, dst_dir + name)
-              for prefix in ["AppStore_", "Development_", "AdHoc_", "Enterprise_"]:
-                  if name.startswith(prefix):
-                      shutil.copy(src, dst_dir + name[len(prefix):])
-          build_txt = open("/Users/Shared/telegram-ios/Telegram/BUILD").read()
-          for m in set(re.findall(r"([A-Za-z0-9_.-]+\.mobileprovision)", build_txt)):
-              shutil.copy(src, dst_dir + m)
-          '
+          for name in \
+            Telegram.mobileprovision \
+            NotificationContent.mobileprovision \
+            NotificationService.mobileprovision \
+            Share.mobileprovision \
+            Widget.mobileprovision \
+            SiriIntents.mobileprovision \
+            BroadcastUpload.mobileprovision \
+            WatchApp.mobileprovision \
+            WatchExtension.mobileprovision; do
+            cp /tmp/user.mobileprovision "$SOURCE_DIR/build-system/user-codesigning/profiles/$name"
+          done
 
           security create-keychain -p "buildpass" build.keychain
           security default-keychain -s build.keychain
