@@ -71,13 +71,18 @@ jobs:
               if "exports_files(" in txt and "provisioning" in txt:
                   txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", genrule, txt, flags=re.DOTALL)
               open(path, "w").write(txt)
-          for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**/BUILD*", recursive=True):
-              txt = open(path).read()
-              new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
-              for ext in [".Share", ".NotificationContent", ".NotificationService", ".Widget", ".SiriIntents", ".BroadcastUpload", ".WatchApp", ".WatchExtension", ".watchkitapp", ".watchkitextension"]:
-                  new_txt = new_txt.replace(ext + "\"", "\"").replace(ext + "\x27", "\x27")
-              if new_txt != txt:
-                  open(path, "w").write(new_txt)
+          exts = [".Share", ".NotificationContent", ".NotificationService", ".Widget", ".SiriIntents", ".BroadcastUpload", ".WatchApp", ".WatchExtension", ".watchkitapp", ".watchkitextension"]
+          for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**", recursive=True):
+              if path.endswith("BUILD") or path.endswith(".plist"):
+                  try:
+                      txt = open(path).read()
+                      new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
+                      for ext in exts:
+                          new_txt = new_txt.replace(ext + "\"", "\"").replace(ext + "\x27", "\x27").replace(ext + "<", "<")
+                      if new_txt != txt:
+                          open(path, "w").write(new_txt)
+                  except Exception:
+                      pass
           '
 
       - name: Build the App
