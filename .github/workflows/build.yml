@@ -46,6 +46,7 @@ jobs:
 
           TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
           FULL_APP_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract Entitlements.application-identifier raw -)
+          APP_GROUP=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract Entitlements.com\.apple\.security\.application-groups.0 raw -)
           REAL_BUNDLE_ID="${FULL_APP_ID#*.}"
           if [[ "$REAL_BUNDLE_ID" == *"*"* ]]; then
             REAL_BUNDLE_ID="${REAL_BUNDLE_ID//\*/ghostgram}"
@@ -60,8 +61,10 @@ jobs:
           json.dump(d, open(p, 'w'), indent=2)
           "
 
-          python3 -c '
-          import glob, re
+          APP_GROUP="$APP_GROUP" REAL_BUNDLE_ID="$REAL_BUNDLE_ID" python3 -c '
+          import glob, re, os
+          app_group = os.environ["APP_GROUP"]
+          real_bid = os.environ["REAL_BUNDLE_ID"]
           genrule = "genrule(name = \"copy_prof\", outs = [\"Telegram.mobileprovision\"], cmd = \"cp /Users/Shared/telegram-ios/build-system/user-codesigning/profiles/Telegram.mobileprovision $@\", visibility = [\"//visibility:public\"])"
           for path in glob.glob("/Users/Shared/telegram-ios/build-system/Make/*.py"):
               txt = open(path).read()
@@ -79,6 +82,9 @@ jobs:
                       new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
                       for ext in exts:
                           new_txt = new_txt.replace(ext + "\"", "\"").replace(ext + "\x27", "\x27").replace(ext + "<", "<")
+                      new_txt = new_txt.replace("group." + real_bid, app_group)
+                      new_txt = re.sub(r"\"group\.\"\s*\+\s*bundle_id", "\"" + app_group + "\"", new_txt)
+                      new_txt = re.sub(r"\"group\.\{\}\"\.format\(bundle_id\)", "\"" + app_group + "\"", new_txt)
                       if new_txt != txt:
                           open(path, "w").write(new_txt)
                   except Exception:
