@@ -32,24 +32,11 @@ jobs:
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/profiles"
 
           echo "$CERT_P12_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/raw.p12
-          echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/user.mobileprovision
+          echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision"
           CLEAN_PASS=$(printf "%s" "$CERT_PASSWORD" | tr -d '\r\n')
 
           openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem -legacy || openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem
           openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS" -legacy || openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS"
-
-          for name in \
-            Telegram.mobileprovision \
-            NotificationContent.mobileprovision \
-            NotificationService.mobileprovision \
-            Share.mobileprovision \
-            Widget.mobileprovision \
-            SiriIntents.mobileprovision \
-            BroadcastUpload.mobileprovision \
-            WatchApp.mobileprovision \
-            WatchExtension.mobileprovision; do
-            cp /tmp/user.mobileprovision "$SOURCE_DIR/build-system/user-codesigning/profiles/$name"
-          done
 
           security create-keychain -p "buildpass" build.keychain
           security default-keychain -s build.keychain
@@ -57,7 +44,7 @@ jobs:
           security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
-          TEAM_ID=$(security cms -D -i /tmp/user.mobileprovision | plutil -extract TeamIdentifier.0 raw -)
+          TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
           python3 -c "
           import json
           p = '$SOURCE_DIR/build-system/appstore-configuration.json'
@@ -68,13 +55,18 @@ jobs:
           "
 
           python3 -c '
-          import glob
+          import glob, re
           for path in glob.glob("/Users/Shared/telegram-ios/build-system/Make/*.py"):
               txt = open(path).read()
               if "Could not find a valid aps-environment" in txt:
                   txt = txt.replace("Could not find a valid aps-environment", "IGNORE_APS_CHECK")
                   txt = txt.replace("sys.exit(1)", "pass")
                   open(path, "w").write(txt)
+          for path in glob.glob("/Users/Shared/telegram-ios/**/BUILD*", recursive=True):
+              txt = open(path).read()
+              new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
+              if new_txt != txt:
+                  open(path, "w").write(new_txt)
           '
 
       - name: Build the App
