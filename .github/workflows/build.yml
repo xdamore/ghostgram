@@ -32,11 +32,15 @@ jobs:
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/profiles"
 
           echo "$CERT_P12_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/raw.p12
-          echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision"
+          echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/user.mobileprovision
           CLEAN_PASS=$(printf "%s" "$CERT_PASSWORD" | tr -d '\r\n')
 
           openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem -legacy || openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem
           openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS" -legacy || openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS"
+
+          for f in "$SOURCE_DIR/build-system/fake-codesigning/profiles/"*.mobileprovision; do
+            cp /tmp/user.mobileprovision "$SOURCE_DIR/build-system/user-codesigning/profiles/$(basename "$f")"
+          done
 
           security create-keychain -p "buildpass" build.keychain
           security default-keychain -s build.keychain
@@ -44,7 +48,7 @@ jobs:
           security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
-          TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/profile.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
+          TEAM_ID=$(security cms -D -i /tmp/user.mobileprovision | plutil -extract TeamIdentifier.0 raw -)
           python3 -c "
           import json
           p = '$SOURCE_DIR/build-system/appstore-configuration.json'
