@@ -38,7 +38,8 @@ jobs:
             --bazelUserRoot="$BAZEL_USER_ROOT" \
             generate-verification-profiles \
             --configurationPath="build-system/appstore-configuration.json" \
-            --codesigningInformationPath=build-system/fake-codesigning
+            --codesigningInformationPath=build-system/fake-codesigning \
+            --destination="build-system/fake-codesigning/profiles"
 
           python3 -u build-system/Make/Make.py \
             --overrideXcodeVersion \
