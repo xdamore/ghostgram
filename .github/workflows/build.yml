@@ -5,7 +5,6 @@ on:
 
 jobs:
   build:
-    # Исправлено: macos-14 больше не поддерживается, используем актуальный macos-latest (macos-15)
     runs-on: macos-latest
 
     steps:
@@ -118,10 +117,10 @@ jobs:
           sudo rm -rf "$BAZEL_USER_ROOT"
           cd $SOURCE_DIR
 
-          # ОГРАНИЧЕНИЕ ПАМЯТИ ДЛЯ BAZEL (чтобы не было SIGKILL 9 на 7 ГБ ОЗУ)
+          # ОГРАНИЧЕНИЕ ПАМЯТИ ДЛЯ BAZEL 9 (исправленный синтаксис)
           echo "build --jobs=2" >> .bazelrc
-          echo "build --local_ram_resources=4096" >> .bazelrc
-          echo "build --local_cpu_resources=2" >> .bazelrc
+          echo "build --local_resources=memory=4096" >> .bazelrc
+          echo "build --local_resources=cpu=2" >> .bazelrc
 
           BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
           export APP_VERSION=$(cat versions.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["app"]);')
