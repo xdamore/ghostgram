@@ -77,16 +77,15 @@ jobs:
                   txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", genrule, txt, flags=re.DOTALL)
               open(path, "w").write(txt)
           exts = [".Share", ".NotificationContent", ".NotificationService", ".Widget", ".SiriIntents", ".BroadcastUpload", ".WatchApp", ".WatchExtension", ".watchkitapp", ".watchkitextension"]
-          for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**", recursive=True):
-              if path.endswith("BUILD") or path.endswith(".plist"):
+          for path in glob.glob("/Users/Shared/telegram-ios/**", recursive=True):
+              if path.endswith("BUILD") or path.endswith(".plist") or path.endswith(".entitlements") or path.endswith(".bzl"):
                   try:
                       txt = open(path).read()
                       new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
+                      new_txt = re.sub(r"group\.[A-Za-z0-9_.*{}-]+", app_group, new_txt)
+                      new_txt = re.sub(r"\"group\.\"\s*\+\s*[A-Za-z0-9_.]+", "\"" + app_group + "\"", new_txt)
                       for ext in exts:
                           new_txt = new_txt.replace(ext + "\"", "\"").replace(ext + "\x27", "\x27").replace(ext + "<", "<")
-                      new_txt = new_txt.replace("group." + real_bid, app_group)
-                      new_txt = re.sub(r"\"group\.\"\s*\+\s*bundle_id", "\"" + app_group + "\"", new_txt)
-                      new_txt = re.sub(r"\"group\.\{\}\"\.format\(bundle_id\)", "\"" + app_group + "\"", new_txt)
                       if new_txt != txt:
                           open(path, "w").write(new_txt)
                   except Exception:
