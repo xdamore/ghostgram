@@ -117,10 +117,11 @@ jobs:
           sudo rm -rf "$BAZEL_USER_ROOT"
           cd $SOURCE_DIR
 
-          # ОГРАНИЧЕНИЕ ПАМЯТИ ДЛЯ BAZEL 9 (исправленный синтаксис)
-          echo "build --jobs=2" >> .bazelrc
-          echo "build --local_resources=memory=4096" >> .bazelrc
-          echo "build --local_resources=cpu=2" >> .bazelrc
+          # САМОЕ ВАЖНОЕ: Теперь Bazel будет делать только 1 задачу за раз (--jobs=1).
+          # Это спасет оперативную память при подписи в конце.
+          echo "build --jobs=1" >> .bazelrc
+          # Разрешаем системе использовать больше памяти для финальных шагов
+          echo "build --local_resources=memory=6144" >> .bazelrc
 
           BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
           export APP_VERSION=$(cat versions.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["app"]);')
