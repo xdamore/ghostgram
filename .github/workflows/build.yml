@@ -74,6 +74,8 @@ jobs:
                   txt = txt.replace("sys.exit(1)", "pass")
               if "exports_files(" in txt and "provisioning" in txt:
                   txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", genrule, txt, flags=re.DOTALL)
+              txt = txt.replace("\"--apple_generate_dsym\",", "")
+              txt = txt.replace("\"--output_groups=+dsyms\",", "")
               open(path, "w").write(txt)
           bad_exts = ["BroadcastUploadExtension", "NotificationContentExtension", "NotificationServiceExtension", "ShareExtension", "WidgetExtension", "SiriIntentsExtension", "IntentsExtension", "WatchApp"]
           for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**", recursive=True):
