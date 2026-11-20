@@ -5,8 +5,8 @@ on:
 
 jobs:
   build:
-    # Возвращаемся на стандартный бесплатный раннер (7 ГБ RAM / 3 vCPU)
-    runs-on: macos-14
+    # Исправлено: macos-14 больше не поддерживается, используем актуальный macos-latest (macos-15)
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -119,7 +119,6 @@ jobs:
           cd $SOURCE_DIR
 
           # ОГРАНИЧЕНИЕ ПАМЯТИ ДЛЯ BAZEL (чтобы не было SIGKILL 9 на 7 ГБ ОЗУ)
-          # Записываем лимиты в конфиг Bazel. 4 ГБ на RAM и максимум 2 задачи одновременно.
           echo "build --jobs=2" >> .bazelrc
           echo "build --local_ram_resources=4096" >> .bazelrc
           echo "build --local_cpu_resources=2" >> .bazelrc
