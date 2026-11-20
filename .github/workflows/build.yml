@@ -84,7 +84,7 @@ jobs:
                       new_txt = re.sub(r">group\.[A-Za-z0-9_.*{}-]+<", ">" + app_group + "<", new_txt)
                       new_txt = re.sub(r"\"group\.\"\s*\+\s*[A-Za-z0-9_.]+", "\"" + app_group + "\"", new_txt)
                       if path.endswith("/Telegram/BUILD"):
-                          new_txt = re.sub(r"\bextensions\s*=\s*\[[^\]]*\]", "extensions = []", new_txt, flags=re.DOTALL)
+                          new_txt = re.sub(r"\b(app_)?extensions\s*=\s*\[[^\]]*\]", "app_extensions = []", new_txt, flags=re.DOTALL)
                           new_txt = re.sub(r"\bwatch_apps\s*=\s*\[[^\]]*\]", "watch_apps = []", new_txt, flags=re.DOTALL)
                       if new_txt != txt:
                           open(path, "w").write(new_txt)
