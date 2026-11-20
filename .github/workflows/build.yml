@@ -99,7 +99,7 @@ jobs:
           gg_build = "/Users/Shared/telegram-ios/Ghostgram/GGSettingsUI/BUILD"
           if os.path.exists(gg_build):
               btxt = open(gg_build).read()
-              btxt = btxt.replace("swift_library(", "swift_library(\n    copts = [\"-Onone\"],")
+              btxt = btxt.replace("copts = [", "copts = [\"-Onone\", ")
               open(gg_build, "w").write(btxt)
           '
 
