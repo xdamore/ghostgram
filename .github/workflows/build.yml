@@ -45,9 +45,9 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
           security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" > /tmp/prof.plist
-          TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'][0])")
+          TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'])")
           FULL_APP_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['application-identifier'])")
-          APP_GROUP=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['com.apple.security.application-groups'][0])")
+          APP_GROUP=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['com.apple.security.application-groups'])")
 
           REAL_BUNDLE_ID="${FULL_APP_ID#*.}"
           if [[ "$REAL_BUNDLE_ID" == *"*"* ]]; then
@@ -75,7 +75,7 @@ jobs:
               if "exports_files(" in txt and "provisioning" in txt:
                   txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", genrule, txt, flags=re.DOTALL)
               open(path, "w").write(txt)
-          bad_exts = ["BroadcastUploadExtension", "NotificationContentExtension", "NotificationServiceExtension", "ShareExtension", "WidgetExtension", "SiriIntentsExtension", "WatchApp"]
+          bad_exts = ["BroadcastUploadExtension", "NotificationContentExtension", "NotificationServiceExtension", "ShareExtension", "WidgetExtension", "SiriIntentsExtension", "IntentsExtension", "WatchApp"]
           for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**", recursive=True):
               if path.endswith("BUILD") or path.endswith(".plist") or path.endswith(".entitlements"):
                   try:
