@@ -5,11 +5,8 @@ on:
 
 jobs:
   build:
-    # ВАЖНО: xlarge-раннеры дают 14 ГБ RAM / 5 vCPU вместо 7 ГБ / 3 vCPU.
-    # Требуется включить larger runners в настройках репозитория
-    # (Settings → Actions → Runners → Larger runners). Если недоступно —
-    # попробуй macos-14-xlarge или macos-13-xlarge.
-    runs-on: macos-15-xlarge
+    # Возвращаемся на стандартный бесплатный раннер (7 ГБ RAM / 3 vCPU)
+    runs-on: macos-14
 
     steps:
       - uses: actions/checkout@v4
@@ -49,8 +46,7 @@ jobs:
           security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
-          # Верификация: сертификат и приватный ключ должны быть доступны codesign.
-          # Если ниже пусто — значит .p12 без полной цепочки, или повреждён пароль.
+          # Верификация сертификата
           security find-identity -v -p codesigning build.keychain
 
           security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" > /tmp/prof.plist
@@ -121,6 +117,12 @@ jobs:
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
           sudo rm -rf "$BAZEL_USER_ROOT"
           cd $SOURCE_DIR
+
+          # ОГРАНИЧЕНИЕ ПАМЯТИ ДЛЯ BAZEL (чтобы не было SIGKILL 9 на 7 ГБ ОЗУ)
+          # Записываем лимиты в конфиг Bazel. 4 ГБ на RAM и максимум 2 задачи одновременно.
+          echo "build --jobs=2" >> .bazelrc
+          echo "build --local_ram_resources=4096" >> .bazelrc
+          echo "build --local_cpu_resources=2" >> .bazelrc
 
           BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
           export APP_VERSION=$(cat versions.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["app"]);')
