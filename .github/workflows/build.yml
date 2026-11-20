@@ -44,9 +44,11 @@ jobs:
           security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
-          TEAM_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract TeamIdentifier.0 raw -)
-          FULL_APP_ID=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract Entitlements.application-identifier raw -)
-          APP_GROUP=$(security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" | plutil -extract Entitlements.com\.apple\.security\.application-groups.0 raw -)
+          security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" > /tmp/prof.plist
+          TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'][0])")
+          FULL_APP_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['application-identifier'])")
+          APP_GROUP=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['com.apple.security.application-groups'][0])")
+
           REAL_BUNDLE_ID="${FULL_APP_ID#*.}"
           if [[ "$REAL_BUNDLE_ID" == *"*"* ]]; then
             REAL_BUNDLE_ID="${REAL_BUNDLE_ID//\*/ghostgram}"
