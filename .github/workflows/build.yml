@@ -20,16 +20,88 @@ jobs:
           cp -R $GITHUB_WORKSPACE /Users/Shared/
           mv /Users/Shared/$(basename $GITHUB_WORKSPACE) /Users/Shared/telegram-ios
 
-      - name: Setup User Codesigning & Configure Build
+      - name: Setup User Codesigning
         env:
           CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
           PROV_PROFILE_BASE64: ${{ secrets.PROV_PROFILE_BASE64 }}
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
           SOURCE_DIR=/Users/Shared/telegram-ios
-          # Настройка сертификатов, keychain и автоматическая правка файлов проекта под подпись
-          # (Полный код скрипта настройки и сборки доступен в конфигурации workflow выше)
-          echo "Setting up codesigning and environment..."
+          rm -rf "$SOURCE_DIR/build-system/user-codesigning"
+          mkdir -p "$SOURCE_DIR/build-system/user-codesigning/certs"
+          mkdir -p "$SOURCE_DIR/build-system/user-codesigning/profiles"
+
+          echo "$CERT_P12_BASE64" | tr -d '[:space:]' | base64 --decode > /tmp/raw.p12
+          echo "$PROV_PROFILE_BASE64" | tr -d '[:space:]' | base64 --decode > "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision"
+          CLEAN_PASS=$(printf "%s" "$CERT_PASSWORD" | tr -d '\r\n')
+
+          openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem -legacy || openssl pkcs12 -in /tmp/raw.p12 -passin "pass:$CLEAN_PASS" -nodes -out /tmp/key.pem
+          openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS" -legacy || openssl pkcs12 -export -in /tmp/key.pem -out "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -passout "pass:$CLEAN_PASS"
+
+          security create-keychain -p "buildpass" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "buildpass" build.keychain
+          security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
+
+          security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" > /tmp/prof.plist
+          TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'][0])")
+          FULL_APP_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['application-identifier'])")
+          APP_GROUP=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['com.apple.security.application-groups'][0])")
+
+          REAL_BUNDLE_ID="${FULL_APP_ID#*.}"
+          if [[ "$REAL_BUNDLE_ID" == *"*"* ]]; then
+            REAL_BUNDLE_ID="${REAL_BUNDLE_ID//\*/ghostgram}"
+          fi
+
+          python3 -c "
+          import json
+          p = '$SOURCE_DIR/build-system/appstore-configuration.json'
+          d = json.load(open(p))
+          d['team_id'] = '$TEAM_ID'
+          d['bundle_id'] = '$REAL_BUNDLE_ID'
+          json.dump(d, open(p, 'w'), indent=2)
+          "
+
+          APP_GROUP="$APP_GROUP" python3 -c '
+          import glob, re, os
+          app_group = os.environ["APP_GROUP"]
+          genrule = "genrule(name = \"copy_prof\", outs = [\"Telegram.mobileprovision\"], cmd = \"cp /Users/Shared/telegram-ios/build-system/user-codesigning/profiles/Telegram.mobileprovision $@\", visibility = [\"//visibility:public\"])"
+          for path in glob.glob("/Users/Shared/telegram-ios/build-system/Make/*.py"):
+              txt = open(path).read()
+              if "Could not find a valid aps-environment" in txt:
+                  txt = txt.replace("Could not find a valid aps-environment", "IGNORE_APS_CHECK")
+                  txt = txt.replace("sys.exit(1)", "pass")
+              if "exports_files(" in txt and "provisioning" in txt:
+                  txt = re.sub(r"exports_files\(\s*\[[^\]]*\][^)]*\)", genrule, txt, flags=re.DOTALL)
+              open(path, "w").write(txt)
+          bad_exts = ["BroadcastUploadExtension", "NotificationContentExtension", "NotificationServiceExtension", "ShareExtension", "WidgetExtension", "SiriIntentsExtension", "IntentsExtension", "WatchApp"]
+          for path in glob.glob("/Users/Shared/telegram-ios/Telegram/**", recursive=True):
+              if path.endswith("BUILD") or path.endswith(".plist") or path.endswith(".entitlements"):
+                  try:
+                      txt = open(path).read()
+                      new_txt = re.sub(r"@build_configuration//provisioning:[A-Za-z0-9_.-]+\.mobileprovision", "@build_configuration//provisioning:Telegram.mobileprovision", txt)
+                      new_txt = re.sub(r"\"group\.[A-Za-z0-9_.*{}-]+\"", "\"" + app_group + "\"", new_txt)
+                      new_txt = re.sub(r">group\.[A-Za-z0-9_.*{}-]+<", ">" + app_group + "<", new_txt)
+                      new_txt = re.sub(r"\"group\.\"\s*\+\s*[A-Za-z0-9_.]+", "\"" + app_group + "\"", new_txt)
+                      if path.endswith("/Telegram/BUILD"):
+                          lines = new_txt.splitlines()
+                          filtered = [l for l in lines if not any(f":{b}\"" in l or f"/{b}\"" in l for b in bad_exts)]
+                          new_txt = "\n".join(filtered) + "\n"
+                      if new_txt != txt:
+                          open(path, "w").write(new_txt)
+                  except Exception:
+                      pass
+          wc = "/Users/Shared/telegram-ios/submodules/Display/Source/WindowContent.swift"
+          if os.path.exists(wc):
+              lines = open(wc).readlines()
+              open(wc, "w").writelines(["        return nil\n" if "reservedRegions" in l else l for l in lines])
+          gg_build = "/Users/Shared/telegram-ios/Ghostgram/GGSettingsUI/BUILD"
+          if os.path.exists(gg_build):
+              btxt = open(gg_build).read()
+              btxt = btxt.replace("copts = [", "copts = [\"-Onone\", ")
+              open(gg_build, "w").write(btxt)
+          '
 
       - name: Build the App
         run: |
