@@ -96,11 +96,11 @@ jobs:
           if os.path.exists(wc):
               lines = open(wc).readlines()
               open(wc, "w").writelines(["        return nil\n" if "reservedRegions" in l else l for l in lines])
-          gg_build = "/Users/Shared/telegram-ios/Ghostgram/GGSettingsUI/BUILD"
-          if os.path.exists(gg_build):
-              btxt = open(gg_build).read()
-              btxt = btxt.replace("copts = [", "copts = [\"-Onone\", ")
-              open(gg_build, "w").write(btxt)
+          for bpath in ["/Users/Shared/telegram-ios/Ghostgram/GGSettingsUI/BUILD", "/Users/Shared/telegram-ios/submodules/TelegramUI/Components/ShareScreen/BUILD"]:
+              if os.path.exists(bpath):
+                  btxt = open(bpath).read()
+                  btxt = btxt.replace("copts = [", "copts = [\"-Onone\", ")
+                  open(bpath, "w").write(btxt)
           '
 
       - name: Build the App
@@ -110,7 +110,6 @@ jobs:
           BAZEL_USER_ROOT="/private/var/tmp/_bazel_containerhost"
           sudo rm -rf "$BAZEL_USER_ROOT"
           cd $SOURCE_DIR
-          echo "build --swiftcopt=-Xllvm --swiftcopt=-sil-disable-pass=CopyPropagation" >> .bazelrc
 
           BUILD_NUMBER_OFFSET="$(cat build_number_offset)"
           export APP_VERSION=$(cat versions.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print(obj["app"]);')
