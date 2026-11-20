@@ -45,9 +45,9 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
 
           security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" > /tmp/prof.plist
-          TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'])")
+          TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'][0])")
           FULL_APP_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['application-identifier'])")
-          APP_GROUP=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['com.apple.security.application-groups'])")
+          APP_GROUP=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['Entitlements']['com.apple.security.application-groups'][0])")
 
           REAL_BUNDLE_ID="${FULL_APP_ID#*.}"
           if [[ "$REAL_BUNDLE_ID" == *"*"* ]]; then
