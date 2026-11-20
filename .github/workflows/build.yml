@@ -5,7 +5,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    # ВАЖНО: xlarge-раннеры дают 14 ГБ RAM / 5 vCPU вместо 7 ГБ / 3 vCPU.
+    # Требуется включить larger runners в настройках репозитория
+    # (Settings → Actions → Runners → Larger runners). Если недоступно —
+    # попробуй macos-14-xlarge или macos-13-xlarge.
+    runs-on: macos-15-xlarge
 
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +30,7 @@ jobs:
           PROV_PROFILE_BASE64: ${{ secrets.PROV_PROFILE_BASE64 }}
           CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
         run: |
+          set -x
           SOURCE_DIR=/Users/Shared/telegram-ios
           rm -rf "$SOURCE_DIR/build-system/user-codesigning"
           mkdir -p "$SOURCE_DIR/build-system/user-codesigning/certs"
@@ -41,8 +46,12 @@ jobs:
           security create-keychain -p "buildpass" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "buildpass" build.keychain
-          security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign
+          security import "$SOURCE_DIR/build-system/user-codesigning/certs/cert.p12" -k build.keychain -P "$CLEAN_PASS" -T /usr/bin/codesign -T /usr/bin/security
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "buildpass" build.keychain
+
+          # Верификация: сертификат и приватный ключ должны быть доступны codesign.
+          # Если ниже пусто — значит .p12 без полной цепочки, или повреждён пароль.
+          security find-identity -v -p codesigning build.keychain
 
           security cms -D -i "$SOURCE_DIR/build-system/user-codesigning/profiles/Telegram.mobileprovision" > /tmp/prof.plist
           TEAM_ID=$(python3 -c "import plistlib; print(plistlib.load(open('/tmp/prof.plist','rb'))['TeamIdentifier'][0])")
