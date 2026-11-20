@@ -94,9 +94,18 @@ jobs:
                       pass
           wc = "/Users/Shared/telegram-ios/submodules/Display/Source/WindowContent.swift"
           if os.path.exists(wc):
-              t = open(wc).read()
-              t = re.sub(r"if #available\(iOS 27\.0, \*\) \{[^}]*\}", "", t)
-              open(wc, "w").write(t)
+              lines = open(wc).readlines()
+              out = []
+              skip = 0
+              for l in lines:
+                  if "iOS 27" in l:
+                      skip = 3
+                      continue
+                  if skip > 0:
+                      skip -= 1
+                      continue
+                  out.append(l)
+              open(wc, "w").writelines(out)
           '
 
       - name: Build the App
@@ -134,4 +143,3 @@ jobs:
         with:
           name: GhostGram-IPA
           path: /Users/Shared/telegram-ios/build/artifacts/GhostGram.ipa
-ы
