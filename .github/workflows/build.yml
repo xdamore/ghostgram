@@ -95,17 +95,7 @@ jobs:
           wc = "/Users/Shared/telegram-ios/submodules/Display/Source/WindowContent.swift"
           if os.path.exists(wc):
               lines = open(wc).readlines()
-              out = []
-              skip = 0
-              for l in lines:
-                  if "iOS 27" in l:
-                      skip = 3
-                      continue
-                  if skip > 0:
-                      skip -= 1
-                      continue
-                  out.append(l)
-              open(wc, "w").writelines(out)
+              open(wc, "w").writelines(["        return nil\n" if "reservedRegions" in l else l for l in lines])
           '
 
       - name: Build the App
