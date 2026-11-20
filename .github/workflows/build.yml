@@ -96,6 +96,11 @@ jobs:
           if os.path.exists(wc):
               lines = open(wc).readlines()
               open(wc, "w").writelines(["        return nil\n" if "reservedRegions" in l else l for l in lines])
+          gg_build = "/Users/Shared/telegram-ios/Ghostgram/GGSettingsUI/BUILD"
+          if os.path.exists(gg_build):
+              btxt = open(gg_build).read()
+              btxt = btxt.replace("swift_library(", "swift_library(\n    copts = [\"-Onone\"],")
+              open(gg_build, "w").write(btxt)
           '
 
       - name: Build the App
